@@ -69,7 +69,7 @@ public static class ServiceCollectionExtensions
         
         // Add Entity Framework with SQLite
         services.AddDbContext<ClanTrackingContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlite(configuration.GetValue<string>("AppConfiguration:ConnectionStrings:DefaultConnection")));
         
         // Register repository
         services.AddScoped<IClanRepository, ClanRepository>();

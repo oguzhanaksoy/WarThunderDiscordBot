@@ -8,4 +8,5 @@ public interface IDiscordService
     Task PublishInitialMemberDataAsync(List<RatingChange> initialData);
     Task RemoveRoleFromUserAsync(string username, ulong roleId);
     Task AssignRoleToUserAsync(string username, ulong roleId);
+    Task SendMessageAsync(string message);
 }

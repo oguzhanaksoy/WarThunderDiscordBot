@@ -63,7 +63,7 @@ public class ClanRepository : IClanRepository
             var recordedAt = DateTime.UtcNow;
             var ratingChanges = new List<RatingChange>();
             var newMembers = new List<string>();
-            var inactiveMembers = new List<string>();
+            var inactiveMembers = new List<ClanMember>();
             var newRatingsToAdd = new List<ClanRating>();
 
             _logger.LogInformation("Processing {Count} scraped members", scrapedMembers.Count);
@@ -73,11 +73,6 @@ public class ClanRepository : IClanRepository
                 .Include(m => m.Ratings.OrderByDescending(r => r.RecordedAt).Take(1))
                 .ToDictionaryAsync(m => m.Username, m => m);
 
-            // Mark all existing members as inactive initially
-            //foreach (var existingMember in existingMembers.Values)
-            //{
-            //    existingMember.IsActive = false;
-            //}
 
             foreach (var scrapedMember in scrapedMembers)
             {
@@ -162,9 +157,19 @@ public class ClanRepository : IClanRepository
             }
 
             // Collect inactive members (those who were not in the scraped data)
-            inactiveMembers.AddRange(existingMembers.Values
-                .Where(m => !m.IsActive)
-                .Select(m => m.Username));
+            var currentUsers = scrapedMembers.Select(x => x.Username).ToHashSet();
+            var existingUsernames = existingMembers.Keys.ToHashSet();
+            var inactiveUsers = existingUsernames.Except(currentUsers);
+            foreach (var inactiveUsername in inactiveUsers)
+            {
+                if (existingMembers.TryGetValue(inactiveUsername, out var member) == false)
+                {
+                    continue;
+                }
+                inactiveMembers.Add(member);
+                _logger.LogInformation("Member marked as inactive: {Username}", inactiveUsername);
+                _context.ClanMembers.Remove(member);
+            }
 
             // Save all new ratings
             if (newRatingsToAdd.Any())

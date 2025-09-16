@@ -1,3 +1,5 @@
+using System.Text;
+
 using ClanRatingTracker.Configuration;
 using ClanRatingTracker.Interfaces;
 using ClanRatingTracker.Models;
@@ -190,6 +192,8 @@ public class ClanTrackingService : IClanTrackingService
             var failedRoleRemovals = 0;
             var successfulRoleRemovals = 0;
 
+            StringBuilder message = new StringBuilder();
+            message.AppendLine("The following members have been marked as inactive and will have their roles removed:");
             foreach (var inactiveMember in processingResult.InactiveMembers)
             {
                 try
@@ -198,9 +202,12 @@ public class ClanTrackingService : IClanTrackingService
                     _logger.LogWarning("AUDIT: Attempting to remove role from inactive member: {Username}. " +
                                      "Member was present in previous scan but not found in current scan.", inactiveMember);
                     
-                    await _discordService.RemoveRoleFromUserAsync(inactiveMember, _config.Discord.RoleId); // Role ID handled in service
+                    await _discordService.RemoveRoleFromUserAsync(inactiveMember.Username, _config.Discord.RoleId); // Role ID handled in service
                     successfulRoleRemovals++;
-                    
+                    var lastRating = inactiveMember.Ratings.FirstOrDefault();
+                    message.AppendLine($"- {inactiveMember.Username} ({lastRating?.PersonalClanRating ?? 0})");
+
+
                     // Audit log for successful role removal
                     _logger.LogWarning("AUDIT: Successfully removed role from inactive member: {Username}. " +
                                      "Action completed at {Timestamp}", inactiveMember, DateTime.UtcNow);
@@ -214,7 +221,13 @@ public class ClanTrackingService : IClanTrackingService
                                        "Error: {ErrorMessage}", inactiveMember, ex.Message);
                 }
             }
-            
+
+            if (successfulRoleRemovals > 0)
+            {
+                // Send a summary message to Discord about removed roles
+                await _discordService.SendMessageAsync(message.ToString());
+            }
+
             var roleManagementDuration = DateTime.UtcNow - roleManagementStartTime;
             _logger.LogInformation("Role management completed in {Duration}ms. " +
                                  "Successful removals: {SuccessfulRemovals}, Failed removals: {FailedRemovals}", 

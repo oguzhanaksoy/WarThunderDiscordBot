@@ -207,6 +207,21 @@ public class DiscordService : IDiscordService, IDisposable
         }, nameof(AssignRoleToUserAsync));
     }
 
+    public async Task SendMessageAsync(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new ArgumentException("Message cannot be null or empty", nameof(message));
+        }
+        await EnsureInitializedAsync();
+        await ExecuteWithRetryAsync(async () =>
+        {
+            var targetChannel = GetTextChannel();
+            await targetChannel.SendMessageAsync(message);
+            _logger.LogInformation("Sent message to Discord channel {ChannelId}", _config.Discord.ChannelId);
+        }, nameof(SendMessageAsync));
+    }
+
     private string FormatRatingChangesMessage(List<RatingChange> changes)
     {
         if (changes.Count == 0)
