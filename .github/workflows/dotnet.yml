@@ -1,6 +1,5 @@
 # This workflow will build a .NET project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
 name: .NET
 
 on:
@@ -8,33 +7,49 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  release:
+    types: [published]
 
 jobs:
- build:
-  runs-on: ${{ matrix.os }}
-  strategy:
-    matrix:
-      include:
-        - os: windows-latest
-          rid: win-x64
-        - os: ubuntu-latest
-          rid: linux-x64
-        - os: ubuntu-latest
-          rid: linux-arm64
-        - os: macos-latest
-          rid: osx-x64
-  steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+          - os: macos-latest
+            rid: osx-x64
 
-    - name: Publish
-      run: dotnet publish ./ClanRatingTracker/ClanRatingTracker.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -o ./publish/${{ matrix.rid }}
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: clantracker-${{ matrix.rid }}
-        path: ./publish/${{ matrix.rid }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Restore dependencies
+        run: dotnet restore ./ClanRatingTracker/ClanRatingTracker.csproj
+        
+      - name: Build
+        run: dotnet build ./ClanRatingTracker/ClanRatingTracker.csproj -c Release --no-restore
+        
+      - name: Publish
+        run: dotnet publish ./ClanRatingTracker/ClanRatingTracker.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -o ./publish/${{ matrix.rid }}
+        
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clantracker-${{ matrix.rid }}
+          path: ./publish/${{ matrix.rid }}
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
