@@ -20,6 +20,7 @@ public class WarThunderWebScraper : IWebScraper
     public WarThunderWebScraper(HttpClient httpClient, ILogger<WarThunderWebScraper> logger)
     {
         _httpClient = httpClient;
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3");
         _logger = logger;
     }
 
@@ -43,14 +44,20 @@ public class WarThunderWebScraper : IWebScraper
         {
             try
             {
-                _logger.LogDebug("Attempt {Attempt} of {MaxAttempts} to fetch URL: {Url}",
-                    attempt, MAX_RETRY_ATTEMPTS, url);
+                //_logger.LogDebug("Attempt {Attempt} of {MaxAttempts} to fetch URL: {Url}",
+                //    attempt, MAX_RETRY_ATTEMPTS, url);
 
-                var response = await _httpClient.GetAsync(url);
-                response.EnsureSuccessStatusCode();
+                //var response = await _httpClient.GetAsync(url);
+                //response.EnsureSuccessStatusCode();
 
-                var content = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation("Successfully fetched HTML content on attempt {Attempt}", attempt);
+                //var content = await response.Content.ReadAsStringAsync();
+
+                //_logger.LogInformation("Successfully fetched HTML content on attempt {Attempt}", attempt);
+
+                // Because we can't pass cloudflare, use local file for parsing.
+
+                var fullFilePath = Path.Combine(AppContext.BaseDirectory, "index.html");
+                var content = await File.ReadAllTextAsync(fullFilePath);
                 return content;
             }
             catch (HttpRequestException ex)
