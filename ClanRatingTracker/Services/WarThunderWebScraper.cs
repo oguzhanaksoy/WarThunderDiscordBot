@@ -5,13 +5,15 @@ using HtmlAgilityPack;
 
 using Microsoft.Extensions.Logging;
 
+using SeleniumUndetectedChromeDriver;
+
 namespace ClanRatingTracker.Services;
 
 public class WarThunderWebScraper : IWebScraper
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<WarThunderWebScraper> _logger;
-    
+
     private const int MAX_RETRY_ATTEMPTS = 3;
     private const int BASE_DELAY_MS = 1000;
     private const string PLAYER_COLUMN_NAME = "player";
@@ -44,21 +46,21 @@ public class WarThunderWebScraper : IWebScraper
         {
             try
             {
-                //_logger.LogDebug("Attempt {Attempt} of {MaxAttempts} to fetch URL: {Url}",
-                //    attempt, MAX_RETRY_ATTEMPTS, url);
+                using (var driver = UndetectedChromeDriver.Create(driverExecutablePath: await new ChromeDriverInstaller().Auto()))
+                {
 
-                //var response = await _httpClient.GetAsync(url);
-                //response.EnsureSuccessStatusCode();
-
-                //var content = await response.Content.ReadAsStringAsync();
-
-                //_logger.LogInformation("Successfully fetched HTML content on attempt {Attempt}", attempt);
-
-                // Because we can't pass cloudflare, use local file for parsing.
-
-                var fullFilePath = Path.Combine(AppContext.BaseDirectory, "index.html");
-                var content = await File.ReadAllTextAsync(fullFilePath);
-                return content;
+                    driver.GoToUrl(url);
+                    while (true)
+                    {
+                        var result = driver.ExecuteScript("return document.querySelectorAll(\".squadrons-members__table\").length");
+                        if (result is not null && int.TryParse(result.ToString(), out var count) && count > 0)
+                            break;
+                        await Task.Delay(1000);
+                    }
+                    var htmlContent = driver.ExecuteScript("return document.documentElement.outerHTML;") as string;
+                    return htmlContent;
+                }
+                //return content;
             }
             catch (HttpRequestException ex)
             {
